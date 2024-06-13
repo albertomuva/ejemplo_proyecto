@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: ekart
-          image: albertomv/app_container:latest
+          image: albertomv/shopping-cart:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8070
