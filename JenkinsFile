@@ -1,0 +1,95 @@
+pipeline {
+    agent any
+    
+    tools {
+        maven 'maven-tool'
+        jdk 'jdk17'
+    }
+    
+    environment {
+        SCANNER_HOME= tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('Descarga del codigo') {
+            steps {
+                git branch: 'main', url: 'https://github.com/albertomuva/ejemplo_proyecto.git'
+            }
+        }
+        
+        stage('Compilación') {
+            steps {
+                sh "mvn compile"
+            }
+        }
+        
+        stage('Test del codigo') {
+            steps {
+                sh "mvn test -DskipTests=true"
+            }
+        }
+        
+        stage('Escaner de SonarQube-') {
+            steps {
+                withSonarQubeEnv('sonarqube_Server') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=EKART -Dsonar.projectName=EKART \
+                    -Dsonar.java.binaries=. '''
+                    
+                }
+            }
+            
+        }
+        
+        stage('Dependencias con OWASP-') {
+            steps {
+                dependencyCheck additionalArguments: ' --scan ./', odcInstallation: 'Dependency-check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        
+        stage('Empaquetando la app') {
+            steps {
+                sh "mvn package -DskipTests=true"
+            }
+        }
+        
+        stage('Subiendo a Nexus') {
+            steps {
+               withMaven(globalMavenSettingsConfig: 'settings-nexus', jdk: 'jdk17', maven: 'maven-tool', mavenSettingsConfig: '', traceability: true) {
+                    sh "mvn deploy -DskipTests=true"
+                }
+                    
+            }
+        }
+        
+        stage('Construyendo la imagen de Docker') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub-user') {
+                        
+                        sh "docker build -t shopping-cart -f docker/Dockerfile ."
+                        sh "docker tag  shopping-cart albertomv/shopping-cart:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Trivy') {
+            steps {
+                sh "trivy image albertomv/shopping-cart:latest > trivy-report.txt "
+                
+            }
+        }
+        
+        stage('Push a Dockerhub') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub-user', toolName: 'docker') {
+                        
+                        sh "docker push albertomv/shopping-cart:latest"
+                    }
+                }
+            }
+        }
+    }
+}
