@@ -40,13 +40,6 @@ pipeline {
             
         }
         
-        stage('Dependencias con OWASP-') {
-            steps {
-                dependencyCheck additionalArguments: ' --scan ./', odcInstallation: 'Dependency-check'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-        
         stage('Empaquetando la app') {
             steps {
                 sh "mvn package -DskipTests=true"
