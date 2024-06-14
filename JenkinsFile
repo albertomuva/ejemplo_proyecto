@@ -69,7 +69,7 @@ pipeline {
         
         stage('Trivy') {
             steps {
-                sh "trivy image albertomv/shopping-cart:latest > trivy-report.txt "
+                sh "trivy image albertomv/shopping-cart:latest > escaner_trivy.txt"
                 
             }
         }
